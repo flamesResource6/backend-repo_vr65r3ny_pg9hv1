@@ -10,12 +10,13 @@ from bson import ObjectId
 from database import db, create_document, get_documents
 from schemas import Profile, Project, Certificate, JournalEntry, SkillSnapshot, Milestone
 
-app = FastAPI(title="Lee Willemse Portfolio API", version="1.0.0")
+app = FastAPI(title="Lee Willemse Portfolio API", version="1.0.1")
 
+# CORS: Use wildcard origins without credentials to satisfy browsers and avoid dynamic origin issues
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,  # Must be False when using wildcard origins
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -82,6 +83,8 @@ def test_database():
 # Generic CRUD helpers
 
 def create_item(model: BaseModel):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
     collection = coll_name(model.__class__)
     new_id = create_document(collection, model)
     doc = db[collection].find_one({"_id": ObjectId(new_id)})
@@ -89,12 +92,16 @@ def create_item(model: BaseModel):
 
 
 def list_items(model_cls, limit: Optional[int] = None, filters: Dict[str, Any] = None):
+    if db is None:
+        return []
     collection = coll_name(model_cls)
     docs = get_documents(collection, filters or {}, limit)
     return [as_serializable(d) for d in docs]
 
 
 def update_item(model_cls, id_str: str, data: Dict[str, Any]):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
     collection = coll_name(model_cls)
     res = db[collection].update_one({"_id": to_oid(id_str)}, {"$set": {**data, "updated_at": datetime.utcnow()}})
     if res.matched_count == 0:
@@ -104,6 +111,8 @@ def update_item(model_cls, id_str: str, data: Dict[str, Any]):
 
 
 def delete_item(model_cls, id_str: str):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
     collection = coll_name(model_cls)
     res = db[collection].delete_one({"_id": to_oid(id_str)})
     if res.deleted_count == 0:
