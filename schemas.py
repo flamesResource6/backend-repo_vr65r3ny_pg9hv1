@@ -1,48 +1,72 @@
 """
-Database Schemas
+Database Schemas for Lee Willemse Portfolio
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
+Each Pydantic model represents a collection in MongoDB. The collection name is the
+lowercase of the class name (e.g., Project -> "project").
 
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+These schemas are used by the database helper and the admin UI.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import List, Optional
+from datetime import date
 
-# Example schemas (replace with your own):
-
-class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
+# Core profile and narrative
+class Profile(BaseModel):
     name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+    tagline: str = Field(..., description="Primary hero tagline")
+    traits: List[str] = Field(default_factory=list, description="Rotating traits under the headline")
+    about: str = Field("", description="About section copy")
+    avatar_url: Optional[str] = Field(None, description="URL to profile picture")
+    location: Optional[str] = Field(None)
+    email: Optional[str] = Field(None)
+    website: Optional[str] = Field(None)
+    resume_url: Optional[str] = Field(None, description="Public URL to resume PDF")
+    theme_preference: str = Field("system", description="light | dark | system")
 
-class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
+# Projects
+class Project(BaseModel):
+    title: str
+    description: str
+    thumbnail_url: Optional[str] = None
+    tech_stack: List[str] = Field(default_factory=list)
+    github_url: Optional[str] = None
+    live_demo_url: Optional[str] = None
+    highlights: List[str] = Field(default_factory=list)
+    challenges: List[str] = Field(default_factory=list)
+    solutions: List[str] = Field(default_factory=list)
+    year: Optional[int] = Field(None, description="Year built")
 
-# Add your own schemas here:
-# --------------------------------------------------
+# Certificates
+class Certificate(BaseModel):
+    title: str
+    organization: str
+    date_awarded: date
+    skill_category: str
+    asset_url: Optional[str] = Field(None, description="Image/PDF public URL")
+    reflection: str = Field("", description="What I learned from this")
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+# Learning journal
+class JournalEntry(BaseModel):
+    title: str
+    content_markdown: str
+    tags: List[str] = Field(default_factory=list)
+    linked_project_title: Optional[str] = None
+    linked_certificate_title: Optional[str] = None
+    date_logged: date
+
+# Skill snapshots over time (for evolution graphs)
+class SkillSnapshot(BaseModel):
+    date_captured: date
+    skills: dict = Field(default_factory=dict, description="{ skillName: 0-100 score }")
+
+# Timeline milestones for story mode
+class Milestone(BaseModel):
+    title: str
+    description: str
+    date_achieved: date
+    kind: str = Field("general", description="start | challenge | win | launch | general")
+
+# Notes:
+# - The Flames database viewer can use these schemas automatically.
+# - Your API can still aggregate across these collections for stats and AI responses.
